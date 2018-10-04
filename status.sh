@@ -4,14 +4,16 @@ REPOS=0
 UPDATED=0
 MODIFIED=0
 VERBOSE=true
+COLORFUL=true
 DEFAULT=false
 
 # Loop through flags, looking for default flag
-while getopts 'dhm' FLAGS; do
+while getopts 'dhmb' FLAGS; do
 	case "${FLAGS}" in
 		d) ROOT_DIR=$HOME/Dropbox/Work; cd "$ROOT_DIR"; echo -e '\n'; DEFAULT=true ;;
-		h) echo -e '\nEnter absolute location of a directory that contains multiple Git repositories.\nI will magically do the rest! :)\n\nYou can use `-d` for the default location, `-h` for this screen, or `-m` for a minimal output.\n'; exit 0 ;;
+		h) echo -e '\nEnter absolute location of a directory that contains multiple Git repositories.\nI will magically do the rest! :)\n\nYou can use `-d` for the default location, `-h` for this screen, `-m` for a minimal output,\n`-b` for black and white output, or any combination of them.\n'; exit 0 ;;
 		m) VERBOSE=false ;;
+		b) COLORFUL=false ;;
 		*) exit 1 ;;
 	esac
 done
@@ -39,12 +41,20 @@ for DIR in */; do # loops through each directory
 	if [ -d ".git" ]; then # if .git folder exists, check status
 		COMMITS=`git rev-list --all --count` # returns number of commits
 		if [ ${VERBOSE} = true ]; then
-			echo -e "\e[34m\e[1m${DIR%?} \e[1;30m${COMMITS} commits\e[0m"
+			if [ ${COLORFUL} = true ]; then
+				echo -e "\e[34m\e[1m${DIR%?} \e[1;30m${COMMITS} commits\e[0m"
+			else
+				echo -e "${DIR%?} ${COMMITS} commits"
+			fi
 		fi
 
 		if git status -s | read status; then # if modified, print status, otherwise up to date
 			if [ ${VERBOSE} = true ]; then
-				git status -s
+				if [ ${COLORFUL} = true ]; then
+					git status -s
+				else
+					git -c color.status=false status -s
+				fi
 			fi
 			MODIFIED=$((MODIFIED + 1))
 		else
@@ -62,6 +72,14 @@ for DIR in */; do # loops through each directory
 	else
 		cd "$ROOT_DIR"
 	fi
+
+	if [ ${VERBOSE} = true ]; then
+		echo -e "\n"
+	fi
 done
 
-echo -e "\n\e[34m\e[1m${REPOS}\e[0m repositories, \e[32m\e[1m${UPDATED}\e[0m up to date, and \e[31m\e[1m${MODIFIED}\e[0m with changes."
+if [ ${COLORFUL} = true ]; then
+	echo -e "\e[34m\e[1m${REPOS}\e[0m repositories, \e[32m\e[1m${UPDATED}\e[0m up to date, and \e[31m\e[1m${MODIFIED}\e[0m with changes."
+else
+	echo -e "${REPOS} repositories, ${UPDATED} up to date, and ${MODIFIED} with changes."
+fi
